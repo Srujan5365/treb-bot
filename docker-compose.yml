@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: rpa_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: automation_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d automation_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api_service:
+    build: .
+    container_name: rpa_selenium_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgrespassword@postgres:5432/automation_db
+      - API_KEY=prod-secret-api-key-replace-me
+      - BASIC_AUTH_USERNAME=admin
+      - BASIC_AUTH_PASSWORD=strong-admin-password-replace-me
+      - WORKER_POLL_INTERVAL_SECONDS=5
+    ports:
+      - "8000:8000"
+    shm_size: 2gb
+
+volumes:
+  postgres_data:
